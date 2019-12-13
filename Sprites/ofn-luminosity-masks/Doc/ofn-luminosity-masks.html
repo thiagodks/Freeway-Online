@@ -1,0 +1,178 @@
+<!docttype HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>ofn-luminosity-masks</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head>
+<style>
+code { 
+    color: #000000; 
+    background: #f8f8f8; 
+    border-style: solid; 
+    border-width: thin; 
+    border-color: #e0e0e0; 
+    border-radius: 3px; 
+    padding-left: 3px;
+    padding-right: 3px;    
+}
+pre { 
+    color: #000000; 
+    background: #ffffff; 
+    border-style: solid; 
+    border-width: medium; 
+    border-color: #c0c0c0; 
+    border-radius: 5px; 
+    padding-top: 8px;
+    padding-bottom: 5px;    
+    padding-left: 8px;
+    padding-right: 8px;    
+}
+
+</style>
+<body>
+<div style="padding: 20px; width: 800px; font-size:120%; color: #000040; background: #f0f0f0; ">
+<h1>ofn-luminosity-masks</h1>
+
+<h2>Purpose</h2>
+
+<p>This plug-in creates a selection mask based on the luminosity of pixels. </p>
+
+<p>These selection masks are called "Luminosity masks" and are a very powerful technique to perform 
+smooth and natural color changes in a picture. This technique is very well explained in 
+<a href="https://patdavid.net/2013/11/getting-around-in-gimp-luminosity-masks.html">PatDavid's canonical tutorial on the subject</a>.</p>
+
+<p>This plug-in creates the masks shown in the tutorial, among others</p>
+
+<p>Unlike the tutorial, and unlike most Gimp scripts based on this tutorial,</p>
+
+<ul>
+<li>The script creates only one mask at a time.</li>
+<li>The mask is not created by addition/composition of other masks, but by applying directly
+the equivalent curve with the Curves tool.</li>
+<li>The script creates a mask using the current state of the layer. The tutorial and the scripts
+create all the masks once, usually on the initial state of the image, so when the masks are used successively, 
+the pixels remain selected based on their initial luminosity and not on the luminosity they reached
+following the previous edits (unless you redo all the masks of course).</li>
+</ul>
+
+<p>A side benefit of the single-mask approach is that the selection can be automatically set from the mask
+and this saves a few mouse clicks.</p>
+
+<h2>Operation</h2>
+
+<ul>
+<li>The plug-in is called from the entries under <code>Select&gt;Luminosity</code> in the image window. There is one menu entry per mask, and there are no parameters, so that you can assign your favorite masks to keystrokes (filter on <code>ofn-luminosity</code> to find them).</li>
+<li>The plug-in should be called on an active layer or active group. In the case of a group, the mask is based on the composition of the group. The plug-in will not work on a channel (it will complain with a message box or in the error console). </li>
+<li>The plug-in creates the selection directly, but the mask is also saved in a channel named <code>#Luminosity:&lt;name of mask&gt;</code>.</li>
+<li>To avoid an unnecessary accumulation of channels, <em>this mask is deleted if you re-run the script.</em>. In practice, the script deletes all the masks with a name that starts with <code>#Luminosity:</code>, so to keep a mask you just have to rename it.</li>
+<li>The "marching ants" selection indicator is of little use with a selections created from a luminosity mask.
+It is best turned of (<code>View&gt;Show selection</code> or QCtrl-T)</li>
+<li>You can easily check the generated mask using <code>Select&gt;Selection Editor</code></li>
+</ul>
+
+<h2>Defining your own masks</h2>
+
+<p>Defining a luminosity mask is exactly equivalent to defining a "curve", the only difference being how the curve
+is interpreted. </p>
+
+<ul>
+<li>In a regular "Curves" usage, the input is the range of values of the channel, and the output
+is the corresponding new values for the same channel. </li>
+<li>For masks, the output is the amount of selection applied to pixels 
+that have the input luminosity. </li>
+</ul>
+
+<p>The usual masks correspond to simple curves:</p>
+
+<p><img src="StandardMasks.webp" alt="standard masks][1" title=""></p>
+
+<p>But you can make arbitrary ones, for instance, if you want to deal with things that are light, but not very light (according to some authors, S-shaped sides make for smoother transitions):</p>
+
+<p><img src="ArbitraryMask.webp" alt="arbitrary masks][1" title=""></p>
+
+<p>For a one-shot usage, you would:</p>
+
+<ul>
+<li>Create a channel from a desaturated version of the image </li>
+<li>Create a selection from the channel (these first two steps are also conveniently
+what is done when asking for the <code>Raw luminosity</code> mask).</li>
+<li>Start the "quickmask"</li>
+<li>Apply the Curves tool on the "quickmask" (what is not selected turns red).</li>
+</ul>
+
+<p>But if you often use the same mask this gets tedious. You can of course save the curve
+as a preset of the Curves tool, but this plug-in lets you define your own curves by putting
+them in a plug-in configuration file.</p>
+
+<p>The file structure is simple. Lines are either</p>
+
+<ul>
+<li>Lines that start with a <code>#</code>; these are optional comments</li>
+<li><p>Lines that are made of three sections, separated by a <code>;</code>:</p>
+
+<ul>
+<li>The curve name (this is used to define the menu entry and the mask name)</li>
+<li>The curve description (it appears in the "mouse-over" information)</li>
+<li><p>The points that define the curves, as spaces-separated pairs of "X Y" coordinates</p>
+
+<pre>Example/Middle-Light;Light mediums;0.00 0.00 0.75 1.00 1.00 0.00
+</pre></li>
+</ul></li>
+</ul>
+
+<p>It would be tedious to copy points coordinates between the Curves display and the
+configuration file, but there is an easy way: if you apply the curve once (for instance
+when using the "quickmask", as mentioned above), it is saved as a preset, 
+and this preset is the first that appears in the <code>Presets</code> selector 
+(you can also save it and give it a name by clicking the <code>+</code> icon).</p>
+
+<p>The presets are saved in a text file: in 2.10 this is 
+<a href="http://www.gimp.org/tutorials/GIMPProfile/"><code>{your Gimp profile}</code></a><code>/filters/GimpCurvesConfig.settings</code>.</p>
+
+<pre>(GimpCurvesConfig "2019-11-16 00:11:19"
+    (time 1573859479)
+    (linear no)
+    (channel value)
+    (curve
+        (curve-type smooth)
+        (points 14 0 0 0.43941411451398138 0.2421875 0.5352862849533957 0.875 0.61651131824234351⏎
+        0.98828125 0.69241011984021306 0.88671875 0.76964047936085211 0.30078125 1 0)
+        (point-types 7 smooth smooth smooth smooth smooth smooth smooth)
+        (n-samples 256)
+[... snip ...]
+</pre>
+
+<p>The top item is the last saved preset. The line that starts with <code>(points</code> is the one of interest. Its contents (minus the opening <code>(points</code>, the first number (<code>14</code>), and the closing <code>)</code>) can be used directly in the plug-in
+configuration:</p>
+
+<pre>Example/Middle-Light;Light mediums;0 0 0.43941411451398138 0.2421875⏎ 
+0.5352862849533957 0.875 0.61651131824234351 0.98828125 0.69241011984021306⏎
+0.88671875 0.76964047936085211 0.30078125 1 0
+</pre>
+
+<p>(the line above is folded for readability, this should be one single line). There is no need
+to be this accurate in practice, the values can be rounded to a couple of decimals to make 
+the line an easier read:</p>
+
+<pre>Example/Middle-Light;Light mediums;0 0 0.44 0.24 0.54 0.86 0.62 0.99 0.69 0.89 0.77 0.30 1 0
+</pre>
+
+<h3>In practice</h3>
+
+<ul>
+<li>An example configuration file is provided in the <code>Doc</code> directory.</li>
+<li>The configuration file should have the same name as the plug-in with extension <code>.ini</code> instead of <code>.py</code>.</li>
+<li>The configuration file is searched, in that order (only the first one found counts):
+<ul>
+<li>in the <code>tool-presets</code> subdirectory of the Gimp profile</li>
+<li>in the Gimp profile itself</li>
+<li>in the directory where the plug-in Python file is kept </li>
+</ul></li>
+<li>To create menu entries the plug-in registration should be executed, but Gimp will not re-execute it 
+if the plug-in executable is not changed (only the configuration file changes here). 
+To make Gimp consider that the plug-in changed, you can remove/rename it, restart Gimp, and put it back and restart Gimp again. </li>
+<li>Once the menu entries are created, you can change the curves values without needing to re-register or even to restart Gimp.</li>
+<li>Your additional masks can also be assigned to keyboard shortcuts.</li>
+<li>You can create sub-menus by using '/' in the mask name.</li>
+</ul>
+</div></body></html>
